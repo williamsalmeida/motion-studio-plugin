@@ -1,0 +1,8 @@
+{
+  "name": "motion-studio",
+  "private": true,
+  "description": "Estúdio de motion: cada filme em films/<id>, criado pelo plugin motion-studio.",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

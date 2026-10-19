@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>__TITULO__</title>
+    <style>
+      /*
+       * Marca do filme: uma face de display, uma de UI e uma cor de destaque.
+       * Fontes ficam em assets/__FILME__/fonts/ (woff2, com font-display: block
+       * para nenhum quadro sair com a fonte de reserva). Exemplo:
+       *
+       * @font-face {
+       *   font-family: 'Display';
+       *   src: url('../../assets/__FILME__/fonts/Display.woff2') format('woff2');
+       *   font-weight: 100 900;
+       *   font-display: block;
+       * }
+       */
+      :root {
+        --fundo: #f4f1ea;
+        --ink: #16181d;
+        --muted: #5b6270;
+        --acento: #2f5bd3;
+        --font-display: 'Helvetica Neue', Arial, sans-serif;
+        --font-ui: 'Helvetica Neue', Arial, sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+      }
+      #stage {
+        position: relative;
+        overflow: hidden;
+        background: var(--fundo);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
+      #stage * {
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script type="module" src="./film.js"></script>
+  </body>
+</html>

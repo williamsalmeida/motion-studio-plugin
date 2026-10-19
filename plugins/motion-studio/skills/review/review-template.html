@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITULO}} · revisão</title>
+<!--
+  Modelo da página de revisão (plugin motion-studio). Copie para
+  out/<id>/review/index.html e troque cada {{…}}. Mídias da rodada em rN/.
+  Use a fonte e a cor de destaque do filme, se quiser: só mude --acento.
+-->
+<style>
+  :root { --bg: #eef0f3; --ink: #14181f; --muted: #5b6472; --line: #d6dbe3; --card: #fff; --acento: #2f5bd3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111418; --ink: #e9edf2; --muted: #9aa4b2; --line: #2a313a; --card: #1a1f26; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 48px 16px 96px; }
+  h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.05; margin: 0 0 10px; letter-spacing: -0.02em; }
+  h2 { font-size: 30px; margin: 56px 0 14px; padding-top: 20px; border-top: 2px solid var(--ink); }
+  h3 { font-size: 21px; margin: 24px 0 8px; }
+  .lead { font-size: 19px; max-width: 860px; }
+  .ask { background: var(--card); border-left: 6px solid var(--acento); border-radius: 12px; padding: 16px 24px; margin: 24px 0; }
+  .ask ol { margin: 6px 0 0; padding-left: 22px; }
+  img, video { width: 100%; display: block; border-radius: 10px; background: #000; }
+  figure { margin: 0; }
+  figcaption { font-size: 15px; margin-top: 8px; color: var(--muted); }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; background: var(--card); border-radius: 10px; overflow: hidden; }
+  td, th { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .audio { display: grid; grid-template-columns: minmax(0, 280px) 1fr; gap: 6px 20px; align-items: center; margin: 10px 0; }
+  @media (max-width: 640px) { .audio { grid-template-columns: 1fr; } }
+  audio { width: 100%; }
+  .muted { color: var(--muted); font-size: 15px; }
+  .nota { font-weight: 800; color: var(--acento); }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{TITULO}} · revisão antes do render</h1>
+  <p class="lead">Rodada {{N}} · fase <b>{{FASE}}</b>. {{UMA_FRASE_SOBRE_O_QUE_ESTA_PAGINA_MOSTRA}}</p>
+
+  <div class="ask">
+    <b>Decidir nesta rodada</b>
+    <ol>
+      <!-- Uma linha por pergunta. A última é sempre o portão: "Com o seu ok, sigo para …". -->
+      <li>{{PERGUNTA}}</li>
+      <li><b>{{PORTAO}}:</b> com o seu ok, sigo para {{O_QUE_O_PORTAO_LIBERA}}.</li>
+    </ol>
+  </div>
+
+  <h2>1 · O que mudou nesta rodada</h2>
+  <ul>
+    <li><b>{{PEDIDO_DO_USUARIO}}:</b> {{O_QUE_FOI_FEITO}}</li>
+  </ul>
+
+  <h2>2 · Prévia</h2>
+  <video controls preload="metadata" src="r{{N}}/animatic-16x9.mp4"></video>
+  <p class="muted">Animatic: um quadro por batida sobre o mix. Molas, cursor e câmera só aparecem contínuos nas prévias abaixo e no render final.</p>
+  <div class="grade">
+    <figure><video controls preload="none" src="r{{N}}/{{PREVIA}}.mp4"></video><figcaption><b>{{TRECHO}}</b> · {{O_QUE_OLHAR}}</figcaption></figure>
+  </div>
+
+  <h3>Áudio</h3>
+  <div class="audio"><div><b>Mix · {{DURACAO}}</b><div class="muted">{{VOZ}} + trilha em {{TOM}} a {{BPM}} BPM · −14 LUFS · medido, não ouvido</div></div><audio controls preload="none" src="r{{N}}/mix.m4a"></audio></div>
+
+  <h3>Folha de contato (um quadro por batida)</h3>
+  <img src="r{{N}}/folha-de-contato.png" alt="Folha de contato da rodada {{N}}" />
+
+  <h2>3 · Decisões</h2>
+  <!-- Cole aqui o conteúdo de `motion-production relatorio <id>`, em HTML. -->
+  <h3>Suas</h3>
+  <ul><li><b>{{CHAVE}}:</b> {{VALOR}}</li></ul>
+  <h3>Minhas (pode trocar qualquer uma)</h3>
+  <ul><li><b>{{CHAVE}}:</b> {{VALOR}}. {{PORQUE}}</li></ul>
+
+  <h2>4 · Real ou inventado</h2>
+  <table>
+    <tr><th>Elemento</th><th>Origem</th></tr>
+    <tr><td>{{ELEMENTO}}</td><td>{{REAL_OU_INVENTADO_E_FONTE}}</td></tr>
+  </table>
+
+  <h2>5 · Ciclo de qualidade</h2>
+  <table>
+    <tr><th>Eixo</th><th>Nota</th><th>O que sustenta a nota</th></tr>
+    <tr><td>Gancho nos 2 primeiros segundos</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+    <tr><td>Legibilidade no celular</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+    <tr><td>Qualidade do movimento</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+    <tr><td>Variedade</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+    <tr><td>Fidelidade à marca</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+    <tr><td>Sincronia do som</td><td class="nota">{{0-10}}</td><td>{{EVIDENCIA}}</td></tr>
+  </table>
+  <p class="muted">Testes de ritmo: {{OK}} · verify: {{OK}} · revisor independente: {{RESUMO}}</p>
+
+  <h2>Rodadas anteriores</h2>
+  <ul><li><a href="r{{N-1}}/">Rodada {{N-1}}</a>: {{RESUMO}}</li></ul>
+</main>
+</body>
+</html>

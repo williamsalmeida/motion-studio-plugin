@@ -1,0 +1,12 @@
+{
+  "name": "motion-studio-plugin",
+  "private": true,
+  "type": "module",
+  "description": "Scripts, hooks e kit do plugin motion-studio (sem dependências).",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs kit/base/tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

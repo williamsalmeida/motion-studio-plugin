@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+// motion-setup: deixa uma máquina pronta para o estúdio de motion e confere
+// a chave da ElevenLabs. Rode sem argumentos para a verificação.
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const LIB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'lib')
+const S = await import(pathToFileURL(path.join(LIB, 'setup.mjs')).href)
+const { acharEstudio } = await import(pathToFileURL(path.join(LIB, 'state.mjs')).href)
+const { chaveElevenLabs, pedidoDeChave } = await import(pathToFileURL(path.join(LIB, 'env.mjs')).href)
+
+const AJUDA = `motion-setup <comando> [--estudio <pasta>]
+
+  verificar                       checklist da máquina, do estúdio, dos plugins e das skills (padrão)
+  instalar --estudio <pasta>      cria ou completa o estúdio e instala o que falta (idempotente)
+           [--sem-sistema]        não instala pacotes do sistema (ffmpeg)
+           [--sem-claude]         não instala plugins do Claude Code
+  voz                             confere a chave da ElevenLabs no .env do estúdio (sem mostrá-la)
+
+Estúdio: --estudio, MOTION_STUDIO_DIR, ou a pasta com films/ acima da atual.`
+
+const argv = process.argv.slice(2)
+const flag = (k) => argv.includes(`--${k}`)
+const opt = (k) => {
+  const i = argv.indexOf(`--${k}`)
+  return i >= 0 ? argv[i + 1] : undefined
+}
+const cmd = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--estudio') ?? 'verificar'
+const estudioArg = opt('estudio') ?? process.env.MOTION_STUDIO_DIR
+const estudio = estudioArg ? path.resolve(estudioArg.replace(/^~(?=\/|$)/, process.env.HOME ?? '~')) : acharEstudio(process.cwd())
+
+function imprimir(itens) {
+  let grupo = ''
+  for (const i of itens) {
+    if (i.grupo !== grupo) console.log(`\n${(grupo = i.grupo)}`)
+    const marca = i.ok ? '✔' : i.obrigatorio ? '✖' : '○'
+    console.log(`  ${marca} ${i.nome}${i.detalhe ? ` · ${i.detalhe}` : ''}${i.ok ? '' : `\n      → ${i.corrigir}`}`)
+  }
+  const faltam = itens.filter((i) => i.obrigatorio && !i.ok)
+  console.log(faltam.length ? `\n${faltam.length === 1 ? 'falta 1 item obrigatório' : `faltam ${faltam.length} itens obrigatórios`}` : '\ntudo pronto')
+  return faltam.length ? 1 : 0
+}
+
+async function main() {
+  switch (cmd) {
+    case 'ajuda':
+    case 'help':
+      console.log(AJUDA)
+      return 0
+    case 'verificar':
+      if (flag('help')) {
+        console.log(AJUDA)
+        return 0
+      }
+      return imprimir(await S.verificar({ estudio }))
+    case 'instalar': {
+      if (!estudio) {
+        console.error('motion-setup: diga onde fica (ou ficará) o estúdio: motion-setup instalar --estudio ~/projects/motion-studio')
+        return 1
+      }
+      console.log(`estúdio: ${estudio}`)
+      const { feito, manual } = await S.instalar({ estudio, semSistema: flag('sem-sistema'), semClaude: flag('sem-claude'), log: (s) => console.log(s) })
+      if (feito.length) console.log(`\nfeito:\n${feito.map((f) => `  ✔ ${f}`).join('\n')}`)
+      if (manual.length) console.log(`\nfalta fazer à mão:\n${manual.map((m) => `  ✖ ${m}`).join('\n')}`)
+      console.log('\nverificação final:')
+      const r = imprimir(await S.verificar({ estudio }))
+      if (feito.some((f) => f.startsWith('plugin') || f.startsWith('marketplace') || f.startsWith('skill'))) {
+        console.log('\nplugins ou skills novos entram na próxima sessão do Claude Code (ou depois de /reload-plugins).')
+      }
+      return r
+    }
+    case 'voz': {
+      if (!estudio) {
+        console.error('motion-setup: não achei o estúdio; passe --estudio <pasta>')
+        return 1
+      }
+      const chave = chaveElevenLabs(estudio)
+      if (!chave) {
+        console.log(pedidoDeChave(estudio))
+        return 2
+      }
+      const r = await S.conferirChave(chave)
+      console.log(r.texto)
+      return { ok: 0, 'sem-permissao': 0, invalida: 3, erro: 4 }[r.estado]
+    }
+    default:
+      console.error(`motion-setup: comando desconhecido "${cmd}"\n\n${AJUDA}`)
+      return 1
+  }
+}
+
+process.exitCode = await main()

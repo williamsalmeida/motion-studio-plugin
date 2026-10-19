@@ -1,0 +1,14 @@
+{
+  "name": "motion-studio-plugins",
+  "description": "Estúdio de motion design para o Claude Code.",
+  "owner": {
+    "name": "Williams Almeida"
+  },
+  "plugins": [
+    {
+      "name": "motion-studio",
+      "source": "./plugins/motion-studio",
+      "description": "Estúdio de motion design no Claude Code: produção com aprovações, decisões registradas, setup de máquina nova e kit de filme."
+    }
+  ]
+}

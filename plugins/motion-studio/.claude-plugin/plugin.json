@@ -1,0 +1,19 @@
+{
+  "name": "motion-studio",
+  "version": "1.0.0",
+  "description": "Estúdio de motion design no Claude Code: direção, cenas, captura de telas, narração ElevenLabs, trilha sintetizada e revisão, com aprovações por etapa, registro de produção (production.json), setup de máquina nova (motion-setup) e kit de filme com seek(t) puro.",
+  "author": {
+    "name": "Williams Almeida"
+  },
+  "license": "MIT",
+  "keywords": [
+    "motion",
+    "video",
+    "render",
+    "playwright",
+    "ffmpeg",
+    "elevenlabs",
+    "workflow"
+  ],
+  "repository": "https://github.com/williamsalmeida/motion-studio-plugin"
+}

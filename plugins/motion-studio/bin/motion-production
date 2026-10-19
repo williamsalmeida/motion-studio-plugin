@@ -1,0 +1,182 @@
+#!/usr/bin/env node
+// motion-production: registra e consulta o estado de produção de um filme
+// (films/<id>/production.json). É assim que o fluxo guarda cada decisão, quem a
+// tomou e cada ok do usuário. Rode sem argumentos para ver os comandos.
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const LIB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'lib')
+const { DECISOES, fasesDo, FASES } = await import(pathToFileURL(path.join(LIB, 'catalog.mjs')).href)
+const E = await import(pathToFileURL(path.join(LIB, 'state.mjs')).href)
+const { pedidoDeChave, temChaveElevenLabs } = await import(pathToFileURL(path.join(LIB, 'env.mjs')).href)
+
+const AJUDA = `motion-production <comando> [...]
+
+  status [id] [--json]                      filmes do estúdio, ou fase e pendências de um filme
+  catalogo [fase]                           fases e decisões que são do usuário
+  novo <id> [--titulo "..."] [--narrado]    cria films/<id>/production.json
+  decidir <id> <chave> <valor> [--dono usuario|agente|delegado] [--porque "..."] [--fase <fase>]
+  aprovar <id> <fase> --nota "<palavras do usuário>"
+  concluir <id> render|entrega [--nota "..."]
+  rodada <id> --fase <fase> --pedido "..." [--pedido "..."]
+  portao <id> previa|final                  sai com 0 (liberado) ou 3 (bloqueado)
+  relatorio <id>                            Markdown: decisões do usuário, minhas, rodadas
+
+Opções comuns: --estudio <dir> (padrão: sobe a partir da pasta atual até achar films/).`
+
+function parse(argv) {
+  const pos = []
+  const flags = { pedido: [] }
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    if (!a.startsWith('--')) {
+      pos.push(a)
+      continue
+    }
+    const key = a.slice(2)
+    if (key === 'help') {
+      pos.unshift('ajuda')
+      continue
+    }
+    const booleano = ['narrado', 'json'].includes(key)
+    const val = booleano ? true : argv[++i]
+    if (val === undefined) throw new E.ErroProducao(`--${key} precisa de um valor`)
+    if (key === 'pedido') flags.pedido.push(val)
+    else flags[key] = val
+  }
+  return { pos, flags }
+}
+
+const agora = () => {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function estudioDe(flags) {
+  const dir = flags.estudio ?? process.env.MOTION_STUDIO_DIR ?? E.acharEstudio(process.cwd())
+  if (!dir) throw new E.ErroProducao('não achei o estúdio (uma pasta com films/). Rode de dentro dele ou passe --estudio <dir>.')
+  return path.resolve(dir)
+}
+
+function precisa(valor, nome) {
+  if (!valor) throw new E.ErroProducao(`falta <${nome}>. Rode motion-production para ver o uso.`)
+  return valor
+}
+
+function statusDe(estado) {
+  const { fase, faltam } = E.pendencias(estado)
+  const linhas = [`${estado.filme} · ${estado.titulo} · ${estado.narrado ? 'narrado' : 'sem narração'}`, `fase atual: ${fase}`]
+  const def = FASES.find((f) => f.id === fase)
+  if (def) linhas.push(`para fechar: ${def.portao ? `mostrar ao usuário (${def.mostra}) e ter o ok dele` : `entregar (${def.mostra})`}; libera: ${def.libera}`)
+  if (faltam.length) linhas.push('falta perguntar ao usuário:', ...faltam.map((d) => `  - ${d.chave}: ${d.pergunta}`))
+  const caminho = fasesDo(estado.narrado).map((f) => {
+    const feito = f.portao ? estado.aprovacoes[f.id] : estado.marcos[f.id]
+    return `${feito ? '✔' : f.id === fase ? '▶' : '·'} ${f.id}`
+  })
+  linhas.push(caminho.join('  '))
+  const ultima = estado.rodadas.at(-1)
+  if (ultima) linhas.push(`rodada ${ultima.n} (a partir de ${ultima.fase}): ${ultima.pedidos.join('; ')}`)
+  return linhas.join('\n')
+}
+
+async function main() {
+  const { pos, flags } = parse(process.argv.slice(2))
+  const [cmd, ...args] = pos
+  if (!cmd || cmd === 'ajuda' || cmd === 'help' || cmd === '-h') {
+    console.log(AJUDA)
+    return 0
+  }
+
+  if (cmd === 'catalogo') {
+    const fases = args[0] ? FASES.filter((f) => f.id === args[0]) : FASES
+    if (!fases.length) throw new E.ErroProducao(`fase desconhecida "${args[0]}"`)
+    for (const f of fases) {
+      console.log(`\n${f.id}${f.soNarrado ? ' (só narrado)' : ''} · ${f.portao ? 'portão: o usuário vê ' + f.mostra : 'sem portão: ' + f.mostra} · libera ${f.libera}`)
+      for (const d of DECISOES.filter((x) => x.fase === f.id)) {
+        console.log(`  - ${d.chave}${d.soNarrado ? ' (narrado)' : ''}: ${d.pergunta}`)
+        console.log(`      por quê: ${d.porque}${d.opcoes ? `\n      opções: ${d.opcoes.join(' | ')}` : ''}`)
+      }
+    }
+    return 0
+  }
+
+  const estudio = estudioDe(flags)
+
+  if (cmd === 'status' && !args[0]) {
+    const fs = await import('node:fs')
+    const filmes = fs.readdirSync(path.join(estudio, 'films')).filter((id) => fs.existsSync(E.caminhoProducao(estudio, id)))
+    if (!filmes.length) console.log('nenhum filme com production.json neste estúdio')
+    for (const id of filmes) {
+      const estado = E.lerProducao(estudio, id)
+      console.log(`${id}: fase ${E.faseAtual(estado)}`)
+    }
+    return 0
+  }
+
+  const id = precisa(args[0], 'id')
+
+  if (cmd === 'novo') {
+    const fs = await import('node:fs')
+    if (fs.existsSync(E.caminhoProducao(estudio, id))) throw new E.ErroProducao(`films/${id}/production.json já existe`)
+    const estado = E.criarProducao({ id, titulo: flags.titulo, narrado: flags.narrado, em: agora() })
+    console.log(`criado ${path.relative(estudio, E.salvarProducao(estudio, estado))}`)
+    return 0
+  }
+
+  const estado = E.lerProducao(estudio, id)
+  const em = agora()
+  const grava = (novo, msg) => {
+    E.salvarProducao(estudio, novo)
+    console.log(msg)
+    console.log(statusDe(novo))
+    return 0
+  }
+
+  switch (cmd) {
+    case 'status':
+      console.log(flags.json ? JSON.stringify({ ...estado, fase: E.faseAtual(estado), pendencias: E.pendencias(estado) }, null, 2) : statusDe(estado))
+      return 0
+    case 'decidir': {
+      const chave = precisa(args[1], 'chave')
+      const valor = precisa(args.slice(2).join(' '), 'valor')
+      const novo = E.decidir(estado, { chave, valor, dono: flags.dono, porque: flags.porque, fase: flags.fase, em })
+      const d = novo.decisoes[chave]
+      grava(novo, `decidido ${chave} = "${d.valor}" (${d.dono})`)
+      // Filme narrado: a chave precisa estar no .env antes da fase de voz. Avise já.
+      if (chave === 'narracao' && novo.narrado && !temChaveElevenLabs(estudio)) console.log(`\nATENÇÃO\n${pedidoDeChave(estudio)}`)
+      return 0
+    }
+    case 'aprovar': {
+      const fase = precisa(args[1], 'fase')
+      return grava(E.aprovar(estado, { fase, nota: flags.nota, em }), `aprovado ${fase}`)
+    }
+    case 'concluir': {
+      const fase = precisa(args[1], 'render|entrega')
+      return grava(E.concluir(estado, { fase, nota: flags.nota, em }), `concluído ${fase}`)
+    }
+    case 'rodada':
+      return grava(E.abrirRodada(estado, { fase: precisa(flags.fase, '--fase'), pedidos: flags.pedido, em }), 'rodada aberta; as aprovações a partir dessa fase caíram')
+    case 'portao': {
+      const r = E.portao(estado, precisa(args[1], 'previa|final'))
+      console.log(r.motivo)
+      return r.ok ? 0 : 3
+    }
+    case 'relatorio':
+      process.stdout.write(E.relatorio(estado))
+      return 0
+    default:
+      throw new E.ErroProducao(`comando desconhecido "${cmd}"\n\n${AJUDA}`)
+  }
+}
+
+try {
+  process.exitCode = await main()
+} catch (error) {
+  if (error instanceof E.ErroProducao) {
+    console.error(`motion-production: ${error.message}`)
+    process.exitCode = 1
+  } else {
+    throw error
+  }
+}
