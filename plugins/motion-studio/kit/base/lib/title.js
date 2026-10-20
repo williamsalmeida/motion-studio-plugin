@@ -1,7 +1,7 @@
 // Título de capítulo: a frase inteira, com a palavra-chave na cor de destaque. Entra
 // subindo por trás de uma máscara (nada de fade) e sai subindo do mesmo jeito.
 import { ease, prog, spring } from './anim.js'
-import { PALETTE, display, el } from './dom.js'
+import { PALETTE, display, el, translateOrNone } from './dom.js'
 
 /**
  * @param {HTMLElement} parent
@@ -34,7 +34,7 @@ export function createTitle(parent, { text, accent = [], size, width, color = PA
       const p = spring(t - tIn, { k: 260, c: 24 })
       const out = Number.isFinite(tOut) ? ease.inCubic(prog(t, tOut, tOut + 0.22)) : 0
       box.style.transform = `translate(${x}px, ${y}px)`
-      inner.style.transform = `translateY(${((1 - p) * 105 - out * 110).toFixed(2)}%)`
+      inner.style.transform = translateOrNone('y', (1 - p) * 105 - out * 110, '%')
     },
   }
 }

@@ -133,8 +133,29 @@ const scoreRaw = write('score', render([...bed, [sfx, 0.62]]))
 master2pass(scoreRaw, join(HERE, 'score.wav'), -18)
 rmSync(scoreRaw)
 const mixRaw = write('mix', render([...bed, [sfx, 0.62], [voice, 1]]))
-master2pass(mixRaw, join(HERE, 'mix.wav'), -14)
-rmSync(mixRaw)
+// Transientes densos (bumbo + clap + pop no mesmo instante) estouram até ~2,5 dB
+// no AAC do MP4, e quanto depende da trilha. Depois da masterização, um limitador
+// com sobreamostragem baixa a distância entre pico e loudness, um ganho linear
+// devolve -14 LUFS e o resultado é conferido no próprio AAC (mesmo codificador e
+// taxa do render final). Se o pico passar de -1,7 dBTP, o teto do limitador baixa
+// pelo excesso e a cadeia roda de novo. Uma 2ª passada de loudnorm não serve: com
+// trilha esparsa (LRA alto) ela cai no modo dinâmico e reprocessa os transientes.
+const mixMaster = join(HERE, 'mix.master.raw.wav')
+const mixLimitado = join(HERE, 'mix.lim.raw.wav')
+const mixAac = join(HERE, 'mix.teste.raw.m4a')
+master2pass(mixRaw, mixMaster, -14)
+let teto = 0.6
+for (let tentativa = 1; ; tentativa++) {
+  execFileSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', mixMaster, '-af', `aresample=192000,alimiter=limit=${teto.toFixed(4)}:attack=0.5:release=30:level=false,aresample=48000`, '-c:a', 'pcm_f32le', mixLimitado])
+  ganhoLinear(mixLimitado, join(HERE, 'mix.wav'), -14)
+  execFileSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', join(HERE, 'mix.wav'), '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', mixAac])
+  const { pico } = medir(mixAac)
+  if (pico <= -1.7) break
+  if (tentativa === 5) throw new Error(`Pico do mix no AAC em ${pico} dBTP depois de 5 tentativas (alvo -1,5): revise os transientes mais altos da trilha`)
+  teto *= 10 ** ((-1.7 - pico) / 20)
+}
+rmSync(mixAac)
+for (const f of [mixRaw, mixMaster, mixLimitado]) rmSync(f)
 
 process.stdout.write(
   `mix.wav ok — ${DURATION.toFixed(2)} s, -14 LUFS; grid ${beats.matched}/${beats.beats.length} batidas medidas, ` +
@@ -167,6 +188,23 @@ function floatWav(samples, channels) {
   h.write('data', 36)
   h.writeUInt32LE(data.length, 40)
   return Buffer.concat([h, data])
+}
+
+/** Loudness integrada e pico verdadeiro (ebur128, a mesma medida da verificação do render). */
+function medir(input) {
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', input, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' })
+  if (r.status !== 0) throw new Error(`ebur128 falhou: ${r.stderr.slice(-400)}`)
+  const resumo = r.stderr.slice(r.stderr.lastIndexOf('Summary:'))
+  const lufs = Number(resumo.match(/I:\s+(-?[\d.]+) LUFS/)?.[1])
+  const pico = Number(resumo.match(/Peak:\s+(-?[\d.]+) dBFS/)?.[1])
+  if (!Number.isFinite(lufs) || !Number.isFinite(pico)) throw new Error('ebur128 não devolveu loudness e pico')
+  return { lufs, pico }
+}
+
+/** Ganho linear para a loudness integrada `lufs` (não mexe na dinâmica). */
+function ganhoLinear(input, output, lufs) {
+  const ganho = lufs - medir(input).lufs
+  execFileSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', input, '-af', `volume=${ganho.toFixed(2)}dB`, '-c:a', 'pcm_s24le', '-ar', '48000', output])
 }
 
 /** Loudnorm em duas passadas: mede, depois normaliza linear para o alvo / -1,5 dBTP. */

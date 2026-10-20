@@ -110,6 +110,18 @@ export function directionalBlur() {
   }
 }
 
+/**
+ * translateX/translateY que vira 'none' quando o deslocamento é desprezível.
+ * Um transform quase zero (ex.: translateY(-0.00px) de uma mola assentada) num
+ * elemento que acabou de reaparecer tem raster que depende do quadro anterior,
+ * e o verify diverge em poucos pixels. Use em todo transform que assenta em zero.
+ * @param {'x'|'y'} axis
+ * @param {number} value
+ * @param {string} [unit]
+ */
+export const translateOrNone = (axis, value, unit = 'px') =>
+  Math.abs(value) < 0.005 ? 'none' : `translate${axis === 'y' ? 'Y' : 'X'}(${value.toFixed(2)}${unit})`
+
 /** Mostra/esconde uma camada pela janela de tempo. */
 export const showIf = (node, visible) => {
   node.style.display = visible ? 'block' : 'none'

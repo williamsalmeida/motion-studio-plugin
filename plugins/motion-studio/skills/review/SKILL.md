@@ -48,17 +48,26 @@ Registre as notas finais na página de revisão. Elas são a prova do ciclo.
    descritivo.
 2. Rode `node films/<id>/render.mjs video --workers 6`.
 3. Confira o arquivo:
-   - `ffprobe`: tamanho, 60 fps, `yuv420p`, `bt709` e duração igual a
+   - `ffprobe`: tamanho, 60 fps, `yuv420p`, `color_space`,
+     `color_primaries` e `color_transfer` em `bt709`, e duração igual a
      `DURATION`;
-   - `ffmpeg -af ebur128`: -14 ± 0,5 LUFS;
+   - `ffmpeg -af ebur128=peak=true`: -14 ± 0,5 LUFS e pico de no máximo
+     -1,5 dBTP;
    - emendas dos segmentos dos workers: o quadro do MP4 na fronteira de cada
-     segmento bate com o still do mesmo t;
+     segmento bate com o still do mesmo t. Meça com PSNR: o quadro certo dá
+     em torno de 40 dB; o vizinho cai bem abaixo onde há movimento;
    - um storyboard de 1 quadro por segundo, olhado de verdade.
 4. Rode `motion-production concluir <id> render --nota "<arquivo, duração, LUFS>"`.
 
 Se algo falhar, use `superpowers:systematic-debugging`. Um verify que
 diverge numa região só costuma ser estado vazando. Veja
 `motion-studio:scenes`.
+
+Para achar a região, pinte o mesmo t nas duas ordens do verify e faça a
+máscara de diferença:
+`ffmpeg -i a.png -i b.png -filter_complex blend=all_mode=difference`.
+Desvio de um nível de cor costuma ser transform quase zero ou escala
+animada, não lógica.
 
 ## Entrega
 

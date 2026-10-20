@@ -27,6 +27,16 @@ técnico e visual do estúdio.
   assentamento antes.
 - Odômetro com dígitos proporcionais pula: cada casa com a largura do
   próprio dígito, recorte só vertical.
+- Transform que assenta em zero vira `'none'` (`translateOrNone` em
+  `lib/dom.js`). Um `translateY(-0.00px)` num elemento que acabou de
+  reaparecer tem raster que depende do quadro anterior, e o verify diverge
+  em poucos pixels, um nível de cor.
+- Para escalar imagem, ícone SVG ou texto que fica escalado, mude tamanho e
+  posição no layout (`width`, `height`, `left`, `top`, `font-size`), não
+  `transform: scale`. O raster sob escala que muda a cada quadro também
+  depende do histórico.
+- O `film.js` carrega todas as faces do `index.html` antes do setup. Só
+  meça texto depois desse ponto, senão a medida sai na fonte de reserva.
 
 ## Tempo
 
@@ -72,7 +82,7 @@ técnico e visual do estúdio.
 | `lens.js` | lente com o recorte real em 4× (`manifest.crops`) |
 | `camera.js` | poses de cartão por keyframe, deriva lenta, troca empurrando |
 | `subtitles.js` | legendas da narração |
-| `dom.js` | `el`, `layer`, `loadImg` (decodifica antes do 1º quadro), `measure`, fontes e paleta |
+| `dom.js` | `el`, `layer`, `loadImg` (decodifica antes do 1º quadro), `measure`, `translateOrNone`, fontes e paleta |
 
 Para os quadros de estilo, use `frontend-design` para diferenciar as direções
 A e B. Para gráficos e números, use `dataviz`. Mostre cada direção em quadros
