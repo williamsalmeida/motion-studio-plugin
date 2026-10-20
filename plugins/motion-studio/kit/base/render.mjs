@@ -235,7 +235,9 @@ async function video(fmt) {
       const page = await openFilm(fmt)
       const ff = spawn('ffmpeg', [
         '-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'png', '-framerate', String(FPS), '-i', '-',
-        '-vf', 'scale=out_color_matrix=bt709:out_range=tv',
+        // setparams marca primárias e transferência BT.709 nos quadros: o PNG do
+        // Chromium chega sem elas, e as opções de saída sozinhas não chegam ao bitstream.
+        '-vf', 'scale=out_color_matrix=bt709:out_range=tv,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709',
         '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-pix_fmt', 'yuv420p',
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-r', String(FPS), file,

@@ -32,6 +32,16 @@ async function boot() {
   // Sem beats.json (trilha ainda não gerada) o relógio usa o BPM teórico.
   const beats = await fetchJson('./audio/beats.json').catch(() => null)
   const B = makeBeatClock(beats?.beats)
+  // Carrega todas as faces declaradas antes do setup: as cenas medem texto ao
+  // montar, e fonts.ready sozinho resolve antes de algum elemento usar as faces
+  // (as medidas sairiam na fonte de reserva).
+  await Promise.all(
+    [...document.fonts].map((face) =>
+      face.load().catch(() => {
+        throw new Error(`Fonte não carregou: ${face.family} ${face.weight}`)
+      }),
+    ),
+  )
   await document.fonts.ready
 
   const axes = Object.fromEntries(ORDER.map((key) => [key, { enter: null, exit: null }]))

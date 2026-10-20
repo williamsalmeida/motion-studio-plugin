@@ -3,7 +3,7 @@
 // Cada trecho entra com a primeira palavra e sai quando o próximo começa (ou
 // logo depois da fala). Criadas no setup; no seek(t) só estilos mudam.
 import { spring } from './anim.js'
-import { el, measure, shade, uiFont } from './dom.js'
+import { el, measure, shade, translateOrNone, uiFont } from './dom.js'
 
 const LEAD = 0.04
 const HOLD = 0.5
@@ -40,7 +40,7 @@ export function createSubtitles(parent, subs, box, W) {
         s.pill.style.display = on ? 'block' : 'none'
         if (!on) continue
         const p = spring(t - (s.from - LEAD), { k: 320, c: 26 })
-        s.pill.style.transform = `translateY(${(1 - p) * 12}px)`
+        s.pill.style.transform = translateOrNone('y', (1 - p) * 12)
       }
     },
   }

@@ -1,7 +1,7 @@
 // Moldura comum das cenas: visibilidade pela seção e whip pan de entrada e
 // saída. As duas cenas de um corte andam juntas no mesmo eixo e chegam
 // exatamente no corte (sem frame vazio), com motion blur pela velocidade.
-import { directionalBlur, showIf } from './dom.js'
+import { directionalBlur, showIf, translateOrNone } from './dom.js'
 import { WHIP, whip, whipBlur } from './transition.js'
 
 /**
@@ -31,7 +31,7 @@ export function makeFrame(root, L, [s0, s1], { enter = 'x', exit = 'x' } = {}) {
       offset = -whip(t, s1) * size(exit)
       blurPx = whipBlur(t, s1, size(exit))
     }
-    root.style.transform = axis === 'y' ? `translateY(${offset}px)` : `translateX(${offset}px)`
+    root.style.transform = translateOrNone(axis === 'y' ? 'y' : 'x', offset)
     blur.apply(root, axis === 'y' ? 0 : blurPx, axis === 'y' ? blurPx : 0)
     return true
   }

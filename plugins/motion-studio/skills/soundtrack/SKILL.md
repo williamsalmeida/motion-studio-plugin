@@ -40,8 +40,11 @@ A trilha e os efeitos são sintetizados em código (`audio/dsp.mjs` e
 
 - O mix final fica em -14 LUFS integrado, pico -1,5 dBTP (loudnorm em duas
   passadas). O `score.wav` sem voz fica em -18.
-- No MP4 final, meça: `ffmpeg -i <mp4> -af ebur128 -f null -` deve dar
-  -14 ± 0,5 LUFS.
+- O `mix.wav` passa por um limitador com sobreamostragem entre duas
+  masterizações. Transientes densos (bumbo, clap e efeito no mesmo instante)
+  estouram até ~2,4 dB no AAC do MP4.
+- No MP4 final, meça: `ffmpeg -i <mp4> -af ebur128=peak=true -f null -` deve
+  dar -14 ± 0,5 LUFS e pico de no máximo -1,5 dBTP.
 - Loop: a cauda volta ao começo e o último quadro é o primeiro.
 - O agente não ouve o áudio. No relatório, diga "medido, não ouvido" e peça
   ao usuário que confira a mixagem no animatic.
